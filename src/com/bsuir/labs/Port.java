@@ -39,23 +39,39 @@ public class Port {
     }
 
     public synchronized void sendShipToBerth(Ship ship) throws InterruptedException {
-        Thread.sleep(500);
-        Berth berth = berths.stream().filter(b -> b.getShip() == null).toList().get(0);
+        Thread.sleep(200);
+        Berth berth = berths.stream().filter(b -> b.getShip() == null).findAny().orElseThrow();
         int index = berths.indexOf(berth);
         berths.get(index).setShip(ship);
         System.out.println(ship.getName() + " пришвартовался к причалу номер " + berth.getNumber());
+        shipsInQueueOutside.remove(ship);
     }
 
     public synchronized void addShipToQueueOutside(Ship ship) throws InterruptedException {
-        Thread.sleep(500);
+        Thread.sleep(200);
         System.out.println(ship.getName() + " отправился в очередь");
         shipsInQueueOutside.add(ship);
     }
 
-    public void sendShipFromBerthToStorage(Berth berth, Storage storage) {
-        storage.setShip(berth.getShip());
-        berth.setShip(null);
-        System.out.println(berth.getShip().getName() + " из причала номер " + berth.getNumber() + " отправился на склад");
+    public synchronized void sendShipFromBerthToStorage(Ship ship) throws InterruptedException {
+        int index;
+        try {
+            Thread.sleep(200);
+            Berth berth = berths.stream().filter(b -> b.getShip() == ship).toList().get(0);
+            storage.setShip(berth.getShip());
+            index = berths.indexOf(berth);
+            System.out.println(berth.getShip().getName() + " из причала номер " + berth.getNumber() + " отправился на склад");
+            berths.get(index).setShip(null);
+        } catch (ArrayIndexOutOfBoundsException ignored) {
+        }
     }
 
+    @Override
+    public String toString() {
+        return "Port{" +
+                "shipsInQueueOutside=" + shipsInQueueOutside +
+                ", berths=" + berths +
+                ", storage=" + storage +
+                '}';
+    }
 }

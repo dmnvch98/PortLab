@@ -2,6 +2,9 @@ package com.bsuir.labs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
     public static void main(String[] args) throws InterruptedException {
@@ -17,27 +20,33 @@ public class Main {
             int finalI = i;
             Thread thread = new Thread(
                     () -> {
-                        boolean isShipEndTask = false;
-                        Ship ship = new Ship("Ship " + finalI);
-                        if (port.askPermissionGoToBerth()) {
-                            try {
-                                port.sendShipToBerth(ship);
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
+                       Ship ship = new Ship("Ship " + finalI);
+                        try {
+                            port.addShipToQueueOutside(ship);
+                            while (!ship.isFinishedTask()) {
+                                if (!ship.isQueuePassed()) {
+                                    if (port.askPermissionGoToBerth()) {
+                                        port.sendShipToBerth(ship);
+                                        ship.setQueuePassed(true);
+                                    }
+                                }
+                                if (ship.isQueuePassed() && !ship.isBerthPassed()) {
+                                    port.sendShipFromBerthToStorage(ship);
+                                    ship.setBerthPassed(true);
+                                }
                             }
-                        } else {
-                            try {
-                                port.addShipToQueueOutside(ship);
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                        while (!isShipEndTask) {
-
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         }
                     }
             );
             thread.start();
         }
+        Runnable helloRunnable = () -> System.out.println(port);
+
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(helloRunnable, 0, 5, TimeUnit.SECONDS);
     }
+
+
 }
