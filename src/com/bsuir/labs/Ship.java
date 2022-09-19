@@ -56,8 +56,6 @@ public class Ship {
 
     @Override
     public String toString() {
-        return "Ship{" +
-                "name='" + name + '\'' +
-                '}';
+        return name;
     }
 }

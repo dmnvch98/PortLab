@@ -2,13 +2,30 @@ package com.bsuir.labs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
+    static boolean flag = false;
     public static void main(String[] args) throws InterruptedException {
         Port port = new Port();
+        new Main().initData(port);
+        getCurrentInfo(port);
+        ExecutorService es = Executors.newCachedThreadPool();
+        for (int i = 0; i < 10; i++) {
+            int finalI = i;
+            es.execute(() -> port.startWork(finalI));
+        }
+        es.shutdown();
+        flag = es.awaitTermination(1, TimeUnit.MINUTES);
+        System.out.println("Все корабли закончили свое задание");
+    }
+
+    public void initData(Port port) {
         List<Berth> berths = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             Berth berth = new Berth();
@@ -16,37 +33,19 @@ public class Main {
             berths.add(berth);
         }
         port.setBerths(berths);
-        for (int i = 0; i < 10; i++) {
-            int finalI = i;
-            Thread thread = new Thread(
-                    () -> {
-                       Ship ship = new Ship("Ship " + finalI);
-                        try {
-                            port.addShipToQueueOutside(ship);
-                            while (!ship.isFinishedTask()) {
-                                if (!ship.isQueuePassed()) {
-                                    if (port.askPermissionGoToBerth()) {
-                                        port.sendShipToBerth(ship);
-                                        ship.setQueuePassed(true);
-                                    }
-                                }
-                                if (ship.isQueuePassed() && !ship.isBerthPassed()) {
-                                    port.sendShipFromBerthToStorage(ship);
-                                    ship.setBerthPassed(true);
-                                }
-                            }
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-            );
-            thread.start();
-        }
-        Runnable helloRunnable = () -> System.out.println(port);
-
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-        executor.scheduleAtFixedRate(helloRunnable, 0, 5, TimeUnit.SECONDS);
     }
 
-
+    public static void getCurrentInfo(Port port) {
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!flag) {
+                    System.out.println(port);
+                } else {
+                    timer.cancel();
+                }
+            }
+        }, 0, 5000);
+    }
 }

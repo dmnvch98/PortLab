@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Port {
     private Queue<Ship> shipsInQueueOutside = new LinkedList<>();
@@ -34,6 +37,7 @@ public class Port {
         this.berths = berths;
     }
 
+
     public synchronized boolean askPermissionGoToBerth() {
         return berths.stream().filter(b -> b.getShip() == null).toList().size() > 0;
     }
@@ -55,15 +59,41 @@ public class Port {
 
     public synchronized void sendShipFromBerthToStorage(Ship ship) throws InterruptedException {
         int index;
+        Thread.sleep(200);
+        Berth berth = berths.stream().filter(b -> b.getShip() == ship).toList().get(0);
+        storage.setShip(berth.getShip());
+        index = berths.indexOf(berth);
+        System.out.println(berth.getShip().getName() + " из причала номер " + berth.getNumber() + " отправился на склад");
+        berths.get(index).setShip(null);
+    }
+
+    public void startWork(int shipIndex) {
+        Ship ship = new Ship("Ship " + shipIndex);
         try {
-            Thread.sleep(200);
-            Berth berth = berths.stream().filter(b -> b.getShip() == ship).toList().get(0);
-            storage.setShip(berth.getShip());
-            index = berths.indexOf(berth);
-            System.out.println(berth.getShip().getName() + " из причала номер " + berth.getNumber() + " отправился на склад");
-            berths.get(index).setShip(null);
-        } catch (ArrayIndexOutOfBoundsException ignored) {
+            this.addShipToQueueOutside(ship);
+            while (!ship.isFinishedTask()) {
+                if (!ship.isQueuePassed()) {
+                    if (this.askPermissionGoToBerth()) {
+                        this.sendShipToBerth(ship);
+                        ship.setQueuePassed(true);
+                    }
+                }
+                if (ship.isQueuePassed() && !ship.isBerthPassed()) {
+                    this.sendShipFromBerthToStorage(ship);
+                    ship.setBerthPassed(true);
+                    ship.setFinishedTask(true);
+                }
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+    }
+
+    public void getCurrentInfo() {
+        Runnable helloRunnable = () -> System.out.println(this);
+
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(helloRunnable, 0, 5, TimeUnit.SECONDS);
     }
 
     @Override
