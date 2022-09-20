@@ -11,8 +11,8 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
     static boolean flag = false;
+    static Port port = new Port();
     public static void main(String[] args) throws InterruptedException {
-        Port port = new Port();
         new Main().initData(port);
         getCurrentInfo(port);
         ExecutorService es = Executors.newCachedThreadPool();
@@ -22,7 +22,9 @@ public class Main {
         }
         es.shutdown();
         flag = es.awaitTermination(1, TimeUnit.MINUTES);
-        System.out.println("Все корабли закончили свое задание");
+        if (flag) {
+            System.out.println("Все корабли закончили свое задание");
+        }
     }
 
     public void initData(Port port) {

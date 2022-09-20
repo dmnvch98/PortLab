@@ -4,9 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class Port {
     private Queue<Ship> shipsInQueueOutside = new LinkedList<>();
@@ -37,14 +34,20 @@ public class Port {
         this.berths = berths;
     }
 
-
-    public synchronized boolean askPermissionGoToBerth() {
-        return berths.stream().filter(b -> b.getShip() == null).toList().size() > 0;
+    public synchronized boolean askPermissionGoToBerth(Ship ship) throws InterruptedException {
+        Thread.sleep(50);
+        System.out.println(ship.getName() + " запрашивает разрешение на вход в причал");
+        // В листе причалов происходит поиск причала, в котором нет корабля. Если такой причал есть, то корабль
+        // отправляется туда
+        Berth berth = berths.stream().filter(b -> b.getShip() == null).findAny().orElseThrow();
+        System.out.println(ship.getName() + " резрешено войти в причал");
+        //отправка
+        sendShipToBerth(ship, berth);
+        return true;
     }
 
-    public synchronized void sendShipToBerth(Ship ship) throws InterruptedException {
-        Thread.sleep(200);
-        Berth berth = berths.stream().filter(b -> b.getShip() == null).findAny().orElseThrow();
+    public synchronized void sendShipToBerth(Ship ship, Berth berth) throws InterruptedException {
+        Thread.sleep(50);
         int index = berths.indexOf(berth);
         berths.get(index).setShip(ship);
         System.out.println(ship.getName() + " пришвартовался к причалу номер " + berth.getNumber());
@@ -52,14 +55,14 @@ public class Port {
     }
 
     public synchronized void addShipToQueueOutside(Ship ship) throws InterruptedException {
-        Thread.sleep(200);
+        Thread.sleep(50);
         System.out.println(ship.getName() + " отправился в очередь");
         shipsInQueueOutside.add(ship);
     }
 
     public synchronized void sendShipFromBerthToStorage(Ship ship) throws InterruptedException {
         int index;
-        Thread.sleep(200);
+        Thread.sleep(50);
         Berth berth = berths.stream().filter(b -> b.getShip() == ship).toList().get(0);
         storage.setShip(berth.getShip());
         index = berths.indexOf(berth);
@@ -68,20 +71,32 @@ public class Port {
     }
 
     public void startWork(int shipIndex) {
-        Ship ship = new Ship("Ship " + shipIndex);
+        Ship ship = new Ship();
+        ship.setName("Ship " + shipIndex);
+        ship.setProduct("Ship Product " + shipIndex);
         try {
+            //Сначала все корабли отправляются в очередь
             this.addShipToQueueOutside(ship);
+            //Если корабль не выполнил свою задачу, то он будет находится в цикле пока не выполнит ее
             while (!ship.isFinishedTask()) {
+                // Отправка корабля из очереди на причал
                 if (!ship.isQueuePassed()) {
-                    if (this.askPermissionGoToBerth()) {
-                        this.sendShipToBerth(ship);
+                    if (this.askPermissionGoToBerth(ship)) {
                         ship.setQueuePassed(true);
                     }
                 }
-                if (ship.isQueuePassed() && !ship.isBerthPassed()) {
-                    this.sendShipFromBerthToStorage(ship);
-                    ship.setBerthPassed(true);
-                    ship.setFinishedTask(true);
+                //Отправка корабля из причала на склад
+                if (ship.isQueuePassed() && !ship.isFinishedTask()) {
+                    if (storage.askPermissionGoToStorage(ship)) {
+                        storage.isAvailable = false;
+                        this.sendShipFromBerthToStorage(ship);
+                        //затем запуск выгрузки-загрузки корабля
+                        storage.unloadShip(ship);
+                        storage.loadShip(ship);
+                        //Выпуск корабля из причала
+                        ship.setFinishedTask(true);
+                        storage.releaseShip(ship);
+                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -89,19 +104,11 @@ public class Port {
         }
     }
 
-    public void getCurrentInfo() {
-        Runnable helloRunnable = () -> System.out.println(this);
-
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-        executor.scheduleAtFixedRate(helloRunnable, 0, 5, TimeUnit.SECONDS);
-    }
-
     @Override
     public String toString() {
-        return "Port{" +
-                "shipsInQueueOutside=" + shipsInQueueOutside +
-                ", berths=" + berths +
-                ", storage=" + storage +
-                '}';
+        return "Порт:\n" +
+                "Корабли в очереди=" + shipsInQueueOutside +
+                "\nberths=" + berths +
+                "\nstorage=" + storage;
     }
 }

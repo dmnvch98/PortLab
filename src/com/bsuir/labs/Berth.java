@@ -22,10 +22,6 @@ public class Berth {
 
     @Override
     public String toString() {
-//        return "Berth{" +
-//                "ship=" + ship +
-//                ", number=" + number +
-//                '}';
         if (ship != null) {
             return "На пирсе номер " + number + " находится " + ship;
         } else {

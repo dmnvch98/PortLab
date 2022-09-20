@@ -5,11 +5,9 @@ public class Ship {
     private String name;
     private boolean finishedTask = false;
     private boolean queuePassed = false;
-    private boolean berthPassed = false;
 
-    public Ship(String name) {
-        this.name = name;
-    }
+    private boolean storagePassed = false;
+
 
     public Ship() {
     }
@@ -46,12 +44,12 @@ public class Ship {
         this.finishedTask = finishedTask;
     }
 
-    public boolean isBerthPassed() {
-        return berthPassed;
+    public boolean isStoragePassed() {
+        return storagePassed;
     }
 
-    public void setBerthPassed(boolean berthPassed) {
-        this.berthPassed = berthPassed;
+    public void setStoragePassed(boolean storagePassed) {
+        this.storagePassed = storagePassed;
     }
 
     @Override
